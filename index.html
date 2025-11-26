@@ -34,12 +34,11 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
 
     <script type="text/babel">
       const { useState, useMemo } = React;
 
-      // ============== ICONS (SVG Components) ==============
+      // ============== ICONS ==============
       const Icon = ({ name, size = 24, className = "", strokeWidth = 2 }) => {
         const icons = {
           Calendar: (
@@ -82,11 +81,6 @@
               <path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/>
             </svg>
           ),
-          FileText: (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
-              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/>
-            </svg>
-          ),
           Files: (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
               <path d="M15.5 2H8.6c-.4 0-.8.2-1.1.5-.3.3-.5.7-.5 1.1v12.8c0 .4.2.8.5 1.1.3.3.7.5 1.1.5h9.8c.4 0 .8-.2 1.1-.5.3-.3.5-.7.5-1.1V6.5L15.5 2z"/><path d="M3 7.6v12.8c0 .4.2.8.5 1.1.3.3.7.5 1.1.5h9.8"/><path d="M15 2v5h5"/>
@@ -102,9 +96,28 @@
               <path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/>
             </svg>
           ),
+          ChevronDown: (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          ),
+          ChevronUp: (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+              <path d="m18 15-6-6-6 6"/>
+            </svg>
+          ),
+          History: (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>
+            </svg>
+          ),
         };
         return icons[name] || null;
       };
+
+      // ============== FIXED START DATE: November 26, 2025 ==============
+      const FIXED_START_DATE = new Date('2025-11-26');
+      FIXED_START_DATE.setHours(0, 0, 0, 0);
 
       // ============== CONSTANTS / DATA ==============
       const createItem = (id, time, type, region, account, page) => ({
@@ -158,26 +171,15 @@
         '127', '130', '140', '143', '147', '150', '163'
       ];
 
-      const getStartDate = () => {
-        const d = new Date();
-        d.setDate(d.getDate() + 1);
-        d.setHours(0,0,0,0);
-        return d;
-      };
-
+      // Generate schedule starting from FIXED date (Nov 26, 2025)
       const generateSchedule = () => {
         const schedule = [];
-        const startDate = getStartDate();
+        const startDate = new Date(FIXED_START_DATE);
         const endDate = new Date('2025-12-31');
         endDate.setHours(0,0,0,0);
 
         let currentDate = new Date(startDate);
-        let muslimaIdx = 0;
-        let hafsaIdx = 0;
-        let soeursIdx = 0;
-        let bessereIdx = 0;
-        let hAbdulIdx = 0;
-        let deenIdx = 0;
+        let postingDayIndex = 0;
 
         while (currentDate <= endDate) {
           const isoDate = currentDate.toISOString().split('T')[0];
@@ -188,6 +190,7 @@
             day: 'numeric'
           }).format(currentDate);
 
+          // Saturday = Rest Day
           if (currentDate.getDay() === 6) {
             schedule.push({
               date: isoDate,
@@ -198,6 +201,13 @@
             currentDate.setDate(currentDate.getDate() + 1);
             continue;
           }
+
+          const muslimaIdx = postingDayIndex % MUSLIMA_PAGES.length;
+          const hafsaIdx = postingDayIndex % HAFSA_PAGES.length;
+          const soeursIdx = (postingDayIndex * 2) % SOEURS_PAGES.length;
+          const bessereIdx = (postingDayIndex * 2) % BESSERE_PAGES.length;
+          const hAbdulIdx = postingDayIndex % H_ABDULHAKIM_PAGES.length;
+          const deenIdx = postingDayIndex % DEEN_ZITATE_PAGES.length;
 
           const mContent = MUSLIMA_PAGES[muslimaIdx];
           const hContent = HAFSA_PAGES[hafsaIdx];
@@ -228,12 +238,7 @@
           });
 
           currentDate.setDate(currentDate.getDate() + 1);
-          muslimaIdx = (muslimaIdx + 1) % MUSLIMA_PAGES.length;
-          hafsaIdx = (hafsaIdx + 1) % HAFSA_PAGES.length;
-          soeursIdx = (soeursIdx + 2) % SOEURS_PAGES.length;
-          bessereIdx = (bessereIdx + 2) % BESSERE_PAGES.length;
-          hAbdulIdx = (hAbdulIdx + 1) % H_ABDULHAKIM_PAGES.length;
-          deenIdx = (deenIdx + 1) % DEEN_ZITATE_PAGES.length;
+          postingDayIndex++;
         }
 
         return schedule;
@@ -242,15 +247,17 @@
       const SCHEDULE_DATA = generateSchedule();
 
       // ============== POST ITEM COMPONENT ==============
-      const PostItem = ({ item }) => {
+      const PostItem = ({ item, isPast = false }) => {
         const isFrance = item.region === 'France';
         
-        const containerClasses = isFrance
-          ? 'border-l-4 border-blue-500 bg-gradient-to-r from-blue-50 to-white text-blue-900'
-          : 'border-l-4 border-red-500 bg-gradient-to-r from-red-50 to-white text-red-900';
+        const containerClasses = isPast
+          ? 'border-l-4 border-red-300 bg-gradient-to-r from-red-50/50 to-white/50 text-red-800 opacity-75'
+          : isFrance
+            ? 'border-l-4 border-blue-500 bg-gradient-to-r from-blue-50 to-white text-blue-900'
+            : 'border-l-4 border-red-500 bg-gradient-to-r from-red-50 to-white text-red-900';
 
-        const iconColor = isFrance ? 'text-blue-500' : 'text-red-500';
-        const timeBg = isFrance ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700';
+        const iconColor = isPast ? 'text-red-400' : isFrance ? 'text-blue-500' : 'text-red-500';
+        const timeBg = isPast ? 'bg-red-100/50 text-red-600' : isFrance ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700';
 
         let typeLabel = '';
         let typeIcon = 'FileText';
@@ -291,7 +298,7 @@
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 text-lg font-bold bg-white/70 px-4 py-1.5 rounded-full w-fit sm:w-auto shadow-sm border border-white/50">
+              <div className={`flex items-center gap-2 text-lg font-bold ${isPast ? 'bg-red-50/50' : 'bg-white/70'} px-4 py-1.5 rounded-full w-fit sm:w-auto shadow-sm border border-white/50`}>
                 <span className={iconColor}><Icon name="BookOpen" size={18} strokeWidth={2.5} /></span>
                 <span>{item.contentRef}</span>
               </div>
@@ -301,12 +308,12 @@
       };
 
       // ============== DAY CARD COMPONENT ==============
-      const DayCard = ({ day, filterRegion }) => {
+      const DayCard = ({ day, filterRegion, isPast = false, isToday = false }) => {
         if (day.isRestDay) {
           return (
-            <div className="bg-amber-100 rounded-3xl shadow-md border-2 border-amber-200 p-12 flex flex-col items-center justify-center transform transition-transform hover:scale-[1.02]">
-              <h3 className="text-3xl font-black text-amber-800 mb-6">{day.displayDate}</h3>
-              <div className="bg-white/80 backdrop-blur-sm text-amber-700 px-12 py-5 rounded-full text-3xl font-bold shadow-sm border border-amber-200">
+            <div className={`${isPast ? 'bg-red-100/50 border-red-200' : 'bg-amber-100 border-amber-200'} rounded-3xl shadow-md border-2 p-12 flex flex-col items-center justify-center transform transition-transform hover:scale-[1.02]`}>
+              <h3 className={`text-3xl font-black ${isPast ? 'text-red-700' : 'text-amber-800'} mb-6`}>{day.displayDate}</h3>
+              <div className={`${isPast ? 'bg-red-50/80 text-red-600 border-red-200' : 'bg-white/80 text-amber-700 border-amber-200'} backdrop-blur-sm px-12 py-5 rounded-full text-3xl font-bold shadow-sm border`}>
                 يوم راحة 😴
               </div>
             </div>
@@ -319,22 +326,71 @@
 
         if (filteredItems.length === 0) return null;
 
+        const headerBg = isPast 
+          ? 'bg-red-100 border-red-200' 
+          : isToday 
+            ? 'bg-gradient-to-r from-emerald-500 to-teal-500 border-emerald-300' 
+            : 'bg-slate-50 border-slate-200';
+        
+        const headerText = isPast 
+          ? 'text-red-700' 
+          : isToday 
+            ? 'text-white' 
+            : 'text-slate-700';
+
         return (
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden hover:border-slate-300 transition-colors duration-300">
-            <div className="bg-slate-50 border-b border-slate-200 px-6 py-5 flex items-center justify-center gap-3">
-              <span className="text-slate-400"><Icon name="Calendar" size={24} /></span>
-              <h3 className="text-xl font-black text-slate-700 text-center">
+          <div className={`bg-white rounded-2xl shadow-lg border ${isPast ? 'border-red-200' : 'border-slate-100'} overflow-hidden hover:border-slate-300 transition-colors duration-300`}>
+            <div className={`${headerBg} border-b px-6 py-5 flex items-center justify-center gap-3`}>
+              <span className={isPast ? 'text-red-400' : isToday ? 'text-white/80' : 'text-slate-400'}>
+                <Icon name="Calendar" size={24} />
+              </span>
+              <h3 className={`text-xl font-black ${headerText} text-center`}>
                 {day.displayDate}
+                {isToday && <span className="mr-2 text-sm bg-white/20 px-3 py-1 rounded-full">اليوم</span>}
+                {isPast && <span className="mr-2 text-sm bg-red-200/50 px-3 py-1 rounded-full">منتهي</span>}
               </h3>
             </div>
 
-            <div className="p-5 bg-slate-50/50">
+            <div className={`p-5 ${isPast ? 'bg-red-50/30' : 'bg-slate-50/50'}`}>
               <div className="flex flex-col gap-3">
                 {filteredItems.map((item) => (
-                  <PostItem key={item.id} item={item} />
+                  <PostItem key={item.id} item={item} isPast={isPast} />
                 ))}
               </div>
             </div>
+          </div>
+        );
+      };
+
+      // ============== PAST DAYS DROPDOWN ==============
+      const PastDaysDropdown = ({ pastDays, filterRegion }) => {
+        const [isOpen, setIsOpen] = useState(false);
+
+        if (pastDays.length === 0) return null;
+
+        return (
+          <div className="mb-8">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl shadow-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 font-bold text-lg"
+            >
+              <Icon name="History" size={24} />
+              <span>الأيام السابقة ({pastDays.length})</span>
+              <Icon name={isOpen ? "ChevronUp" : "ChevronDown"} size={24} />
+            </button>
+            
+            {isOpen && (
+              <div className="mt-4 space-y-6 p-4 bg-red-50/50 rounded-2xl border-2 border-red-200 border-dashed">
+                {pastDays.map((day) => (
+                  <DayCard 
+                    key={day.date} 
+                    day={day} 
+                    filterRegion={filterRegion}
+                    isPast={true}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         );
       };
@@ -348,6 +404,7 @@
         return (
           <div className="flex flex-col items-center gap-6 mb-10">
             
+            {/* Region Filters */}
             <div className="flex flex-wrap justify-center gap-3">
               <button
                 onClick={() => setRegion('All')}
@@ -386,8 +443,10 @@
               </button>
             </div>
 
+            {/* Visual Divider */}
             <div className="w-16 h-1 bg-slate-200 rounded-full opacity-50"></div>
 
+            {/* Duration Filters */}
             <div className="flex flex-wrap justify-center gap-3">
               <button
                 onClick={() => setDuration('3days')}
@@ -435,31 +494,69 @@
         const [regionFilter, setRegionFilter] = useState('All');
         const [durationFilter, setDurationFilter] = useState('3days');
 
-        const filteredData = useMemo(() => {
+        const { pastDays, currentDays, todayDate } = useMemo(() => {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
+          
+          const todayStr = today.toISOString().split('T')[0];
 
-          let cutoffDate = null;
-          if (durationFilter === '3days') {
-            cutoffDate = new Date(today);
-            cutoffDate.setDate(today.getDate() + 3);
-          } else if (durationFilter === '7days') {
-            cutoffDate = new Date(today);
-            cutoffDate.setDate(today.getDate() + 7);
+          // Find today's index in schedule
+          const todayIndex = SCHEDULE_DATA.findIndex(d => d.date === todayStr);
+          
+          // If today is before schedule starts, show first days based on duration
+          if (todayIndex === -1) {
+            const firstDayDate = new Date(SCHEDULE_DATA[0]?.date);
+            if (today < firstDayDate) {
+              // Determine how many days to show based on duration
+              let daysToShow = 3;
+              if (durationFilter === '7days') daysToShow = 7;
+              else if (durationFilter === 'all') daysToShow = SCHEDULE_DATA.length;
+              
+              return {
+                pastDays: [],
+                currentDays: SCHEDULE_DATA.slice(0, daysToShow),
+                todayDate: todayStr
+              };
+            }
+            // Today is after schedule ends
+            return {
+              pastDays: SCHEDULE_DATA,
+              currentDays: [],
+              todayDate: todayStr
+            };
           }
 
-          return SCHEDULE_DATA.filter(day => {
-            const dayDate = new Date(day.date);
-            
-            if (dayDate < today) return false;
-            if (cutoffDate && dayDate >= cutoffDate) return false;
-            if (day.isRestDay) return true;
-            if (regionFilter === 'All') return true;
-            return day.items.some(item => item.region === regionFilter);
-          });
-        }, [regionFilter, durationFilter]);
+          // Past days: all days before today
+          const past = SCHEDULE_DATA.slice(0, todayIndex);
+          
+          // Determine how many days to show based on duration filter
+          let daysToShow = 3;
+          if (durationFilter === '7days') daysToShow = 7;
+          else if (durationFilter === 'all') daysToShow = SCHEDULE_DATA.length - todayIndex;
+          
+          // Current days: today + more days based on duration
+          const current = SCHEDULE_DATA.slice(todayIndex, todayIndex + daysToShow);
 
-        const startDateStr = SCHEDULE_DATA[0]?.displayDate || '';
+          return {
+            pastDays: past,
+            currentDays: current,
+            todayDate: todayStr
+          };
+        }, [durationFilter]);
+
+        // Filter current days by region
+        const filteredCurrentDays = currentDays.filter(day => {
+          if (day.isRestDay) return true;
+          if (regionFilter === 'All') return true;
+          return day.items.some(item => item.region === regionFilter);
+        });
+
+        // Filter past days by region (reversed to show most recent first)
+        const filteredPastDays = [...pastDays].filter(day => {
+          if (day.isRestDay) return true;
+          if (regionFilter === 'All') return true;
+          return day.items.some(item => item.region === regionFilter);
+        }).reverse();
 
         return (
           <div className="min-h-screen bg-slate-50/50 pb-20">
@@ -469,14 +566,13 @@
               <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4"></div>
               
               <div className="relative container mx-auto text-center z-10">
-                
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-black mb-4 tracking-tight drop-shadow-lg">
                   جدول نشر <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500">TikTok</span>
                 </h1>
                 
                 <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
                   <span className="text-sm opacity-70 mt-2 block">
-                    يبدأ الجدول من {startDateStr}
+                    الأيام السابقة في القائمة المنسدلة الحمراء
                   </span>
                 </p>
               </div>
@@ -491,13 +587,21 @@
                 setDuration={setDurationFilter}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-8">
-                {filteredData.length > 0 ? (
-                  filteredData.map((day) => (
+              {/* Past Days Dropdown */}
+              <PastDaysDropdown 
+                pastDays={filteredPastDays} 
+                filterRegion={regionFilter} 
+              />
+
+              {/* Current Days based on duration filter */}
+              <div className="grid grid-cols-1 gap-8">
+                {filteredCurrentDays.length > 0 ? (
+                  filteredCurrentDays.map((day) => (
                     <DayCard 
                       key={day.date} 
                       day={day} 
-                      filterRegion={regionFilter} 
+                      filterRegion={regionFilter}
+                      isToday={day.date === todayDate}
                     />
                   ))
                 ) : (
